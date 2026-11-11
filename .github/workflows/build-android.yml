@@ -1,0 +1,94 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      unityVersion:
+        description: "Unity version (auto = ProjectSettings/ProjectVersion.txt)"
+        required: false
+        default: auto
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    steps:
+      - name: Check Unity secrets
+        run: |
+          missing=""
+          [ -z "$UNITY_LICENSE" ] && missing="$missing UNITY_LICENSE"
+          [ -z "$UNITY_EMAIL" ] && missing="$missing UNITY_EMAIL"
+          [ -z "$UNITY_PASSWORD" ] && missing="$missing UNITY_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. Add them in Settings > Secrets and variables > Actions (see README)."
+            exit 1
+          fi
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-
+
+      - name: Build with Unity
+        uses: game-ci/unity-builder@v4
+        with:
+          targetPlatform: Android
+          unityVersion: ${{ github.event.inputs.unityVersion || 'auto' }}
+          buildName: UltimateKickoff
+          buildMethod: CIBuild.BuildAndroid
+          androidExportType: androidPackage
+          versioning: Custom
+          version: 0.1.${{ github.run_number }}
+          androidVersionCode: ${{ github.run_number }}
+
+      - name: Find APK
+        id: apk
+        run: |
+          apk=$(find build -name "*.apk" | head -n 1)
+          if [ -z "$apk" ]; then echo "::error::No APK produced"; exit 1; fi
+          cp "$apk" UltimateKickoff.apk
+          ls -lh UltimateKickoff.apk
+
+      - name: Upload APK (workflow artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateKickoff-APK
+          path: UltimateKickoff.apk
+          retention-days: 30
+
+      - name: Publish to "latest" release (direct phone download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Ultimate Kickoff - latest build
+          body: |
+            Latest Android build from commit ${{ github.sha }}.
+            Download **UltimateKickoff.apk** on your phone and install it (allow "Install unknown apps").
+          prerelease: true
+          make_latest: false
+          files: UltimateKickoff.apk
