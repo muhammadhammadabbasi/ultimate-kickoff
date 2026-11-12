@@ -34,6 +34,8 @@ public partial class MatchController : MonoBehaviour
     public bool secondHalf;
     public float shotCharge;
     public bool charging;
+    public int chargeKind;                 // 1 pass, 2 through, 3 shot
+    public MatchPlayer previewMate;        // who the current charged pass would go to
 
     float stateTimer;
     int kickoffTeam;
@@ -57,6 +59,27 @@ public partial class MatchController : MonoBehaviour
     public bool Running => state != MatchState.Paused && state != MatchState.FullTime;
 
     // ================================================================== setup
+
+    static int PickNumber(Pos pos, HashSet<int> used)
+    {
+        int[] prefs;
+        switch (pos)
+        {
+            case Pos.GK: prefs = new[] { 1, 13, 12 }; break;
+            case Pos.RB: prefs = new[] { 2, 12, 22 }; break;
+            case Pos.LB: prefs = new[] { 3, 15, 23 }; break;
+            case Pos.CB: prefs = new[] { 4, 5, 15, 6 }; break;
+            case Pos.CDM: prefs = new[] { 6, 14, 4 }; break;
+            case Pos.CM: prefs = new[] { 8, 14, 16, 6 }; break;
+            case Pos.CAM: prefs = new[] { 10, 17, 8 }; break;
+            case Pos.RM: case Pos.RW: prefs = new[] { 7, 17, 19 }; break;
+            case Pos.LM: case Pos.LW: prefs = new[] { 11, 18, 21 }; break;
+            default: prefs = new[] { 9, 20, 19, 14 }; break;
+        }
+        foreach (int n in prefs) if (used.Add(n)) return n;
+        for (int n = 2; n < 40; n++) if (used.Add(n)) return n;
+        return 0;
+    }
 
     public void Setup(TeamSheet home, TeamSheet away, CameraRig cameraRig, Transform uiRoot, System.Action<int, int, List<GoalEvent>> finished)
     {
@@ -94,6 +117,7 @@ public partial class MatchController : MonoBehaviour
             var gkShirt = MatLib.Lit(sheet.keeperKit, 0.25f);
             var gkShorts = MatLib.Lit(new Color(0.1f, 0.1f, 0.12f), 0.2f);
             var gloves = MatLib.Lit(new Color(0.95f, 0.95f, 0.95f), 0.3f);
+            var usedNumbers = new HashSet<int>();
             for (int i = 0; i < 11; i++)
             {
                 var go = new GameObject("Player");
@@ -101,7 +125,7 @@ public partial class MatchController : MonoBehaviour
                 var mp = go.AddComponent<MatchPlayer>();
                 bool gk = f.slots[i].pos == Pos.GK;
                 mp.Init(sheet.players[i], t, i, f.slots[i], gk ? gkShirt : shirt, gk ? gkShorts : shorts, gk ? gkShirt : socks,
-                    boots[sheet.players[i].Hash % boots.Length], gloves);
+                    boots[sheet.players[i].Hash % boots.Length], gloves, PickNumber(f.slots[i].pos, usedNumbers));
                 if (t == 1)
                 {
                     mp.jogSpeed *= aiSpeed;

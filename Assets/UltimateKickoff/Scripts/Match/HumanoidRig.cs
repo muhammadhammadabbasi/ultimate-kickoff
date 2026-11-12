@@ -34,10 +34,11 @@ public class HumanoidRig : MonoBehaviour
     public bool keeperStance;
     public bool IsDiving => diveT >= 0f;
 
-    public void Build(Material shirt, Material shorts, Material socks, Material skin, Material hair, Material boots, Material hands, float scale)
+    public void Build(Material shirt, Material shorts, Material socks, Material skin, Material hair, Material boots, Material hands,
+                      float scale, Material torsoMat, Material headMat, int hairStyle, bool keeper)
     {
-        var cap = MeshUtil.Capsule;
-        var sph = MeshUtil.Sphere;
+        var sph = MeshUtil.SphereHi;
+        Material armMat = keeper ? shirt : skin;
 
         body = new GameObject("Body").transform;
         body.SetParent(transform, false);
@@ -46,20 +47,20 @@ public class HumanoidRig : MonoBehaviour
 
         torso = new GameObject("Torso").transform;
         torso.SetParent(body, false);
-        MeshUtil.Part("Chest", torso, cap, shirt, new Vector3(0f, 0.33f, 0f), new Vector3(0.4f, 0.33f, 0.25f));
-        MeshUtil.Part("Neck", torso, cap, skin, new Vector3(0f, 0.68f, 0f), new Vector3(0.11f, 0.07f, 0.11f), false);
-        MeshUtil.Part("Head", torso, sph, skin, new Vector3(0f, 0.8f, 0.01f), new Vector3(0.22f, 0.24f, 0.23f));
-        MeshUtil.Part("Hair", torso, sph, hair, new Vector3(0f, 0.86f, -0.02f), new Vector3(0.235f, 0.17f, 0.25f), false);
+        MeshUtil.Part("Shirt", torso, BodyMesh.Torso, torsoMat, Vector3.zero, Vector3.one);
+        MeshUtil.Part("Neck", torso, BodyMesh.Neck, skin, new Vector3(0f, 0.60f, 0f), Vector3.one, false);
+        MeshUtil.Part("Head", torso, BodyMesh.Head, headMat, new Vector3(0f, 0.80f, 0.012f), Vector3.one);
+        MeshUtil.Part("Hair", torso, BodyMesh.HairCap(hairStyle), hair, new Vector3(0f, 0.80f, 0.012f), Vector3.one, false);
 
-        shoulderL = Joint("ShoulderL", torso, new Vector3(-0.23f, 0.56f, 0f));
-        shoulderR = Joint("ShoulderR", torso, new Vector3(0.23f, 0.56f, 0f));
-        elbowL = Arm(shoulderL, shirt, skin, hands);
-        elbowR = Arm(shoulderR, shirt, skin, hands);
+        shoulderL = Joint("ShoulderL", torso, new Vector3(-0.245f, 0.54f, 0f));
+        shoulderR = Joint("ShoulderR", torso, new Vector3(0.245f, 0.54f, 0f));
+        elbowL = Arm(shoulderL, shirt, armMat, hands, keeper);
+        elbowR = Arm(shoulderR, shirt, armMat, hands, keeper);
 
-        MeshUtil.Part("Shorts", body, cap, shorts, new Vector3(0f, -0.06f, 0f), new Vector3(0.39f, 0.14f, 0.26f));
+        MeshUtil.Part("Shorts", body, BodyMesh.Shorts, shorts, Vector3.zero, Vector3.one);
 
-        hipL = Joint("HipL", body, new Vector3(-0.1f, -0.04f, 0f));
-        hipR = Joint("HipR", body, new Vector3(0.1f, -0.04f, 0f));
+        hipL = Joint("HipL", body, new Vector3(-0.10f, -0.02f, 0f));
+        hipR = Joint("HipR", body, new Vector3(0.10f, -0.02f, 0f));
         kneeL = Leg(hipL, shorts, skin, socks, boots);
         kneeR = Leg(hipR, shorts, skin, socks, boots);
     }
@@ -72,23 +73,24 @@ public class HumanoidRig : MonoBehaviour
         return t;
     }
 
-    static Transform Arm(Transform shoulder, Material sleeve, Material skin, Material hands)
+    static Transform Arm(Transform shoulder, Material sleeve, Material armSkin, Material hands, bool keeper)
     {
-        MeshUtil.Part("UpperArm", shoulder, MeshUtil.Capsule, sleeve, new Vector3(0f, -0.14f, 0f), new Vector3(0.11f, 0.15f, 0.11f));
+        MeshUtil.Part("Shoulder", shoulder, MeshUtil.SphereHi, sleeve, Vector3.zero, new Vector3(0.13f, 0.13f, 0.13f), false);
+        MeshUtil.Part("UpperArm", shoulder, BodyMesh.UpperArm, armSkin, Vector3.zero, Vector3.one, false);
+        MeshUtil.Part("Sleeve", shoulder, BodyMesh.Sleeve, sleeve, Vector3.zero, Vector3.one, false);
         var elbow = Joint("Elbow", shoulder, new Vector3(0f, -0.28f, 0f));
-        MeshUtil.Part("Forearm", elbow, MeshUtil.Capsule, skin, new Vector3(0f, -0.13f, 0f), new Vector3(0.085f, 0.14f, 0.085f), false);
-        MeshUtil.Part("Hand", elbow, MeshUtil.Sphere, hands, new Vector3(0f, -0.28f, 0f), new Vector3(0.09f, 0.1f, 0.09f), false);
+        MeshUtil.Part("Forearm", elbow, BodyMesh.ForeArm, armSkin, Vector3.zero, Vector3.one, false);
+        if (keeper) MeshUtil.Part("Glove", elbow, MeshUtil.SphereHi, hands, new Vector3(0f, -0.31f, 0.005f), new Vector3(0.11f, 0.13f, 0.095f), false);
         return elbow;
     }
 
     static Transform Leg(Transform hip, Material shorts, Material skin, Material socks, Material boots)
     {
-        MeshUtil.Part("Thigh", hip, MeshUtil.Capsule, skin, new Vector3(0f, -0.23f, 0f), new Vector3(0.15f, 0.23f, 0.15f));
-        MeshUtil.Part("ShortLeg", hip, MeshUtil.Capsule, shorts, new Vector3(0f, -0.09f, 0f), new Vector3(0.17f, 0.11f, 0.17f), false);
-        var knee = Joint("Knee", hip, new Vector3(0f, -0.44f, 0f));
-        MeshUtil.Part("Shin", knee, MeshUtil.Capsule, socks, new Vector3(0f, -0.21f, 0f), new Vector3(0.125f, 0.22f, 0.125f));
-        var boot = MeshUtil.Part("Boot", knee, MeshUtil.Capsule, boots, new Vector3(0f, -0.44f, 0.05f), new Vector3(0.11f, 0.13f, 0.085f));
-        boot.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        MeshUtil.Part("Thigh", hip, BodyMesh.Thigh, skin, Vector3.zero, Vector3.one);
+        MeshUtil.Part("ShortLeg", hip, BodyMesh.ShortLeg, shorts, Vector3.zero, Vector3.one);
+        var knee = Joint("Knee", hip, new Vector3(0f, -0.46f, 0f));
+        MeshUtil.Part("Shin", knee, BodyMesh.Shin, socks, Vector3.zero, Vector3.one);
+        MeshUtil.Part("Boot", knee, MeshUtil.SphereHi, boots, new Vector3(0f, -0.425f, 0.045f), new Vector3(0.115f, 0.10f, 0.29f));
         return knee;
     }
 

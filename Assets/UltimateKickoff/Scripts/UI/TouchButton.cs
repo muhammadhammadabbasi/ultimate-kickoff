@@ -11,10 +11,21 @@ public class TouchButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 
     public bool IsHeld { get; private set; }
     bool pressed, released;
+    bool ready;
     Color baseColor;
 
-    void Start() { if (face != null) baseColor = face.color; }
-    void OnEnable() { GameInput.Register(this); }
+    /// <summary>Must be called right after AddComponent: OnEnable runs before the action is known.</summary>
+    public void Setup(GameAction a, Image f, Text l)
+    {
+        action = a;
+        face = f;
+        label = l;
+        baseColor = f != null ? f.color : Color.white;
+        ready = true;
+        GameInput.Register(this);
+    }
+
+    void OnEnable() { if (ready) GameInput.Register(this); }
     void OnDisable()
     {
         GameInput.Unregister(this);

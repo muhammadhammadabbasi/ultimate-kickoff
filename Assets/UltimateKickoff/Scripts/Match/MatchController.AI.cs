@@ -39,9 +39,9 @@ public partial class MatchController
         bool sprint = GameInput.Held(GameAction.Sprint);
         bool passDown = GameInput.Pressed(GameAction.Pass);
         bool throughDown = GameInput.Pressed(GameAction.Through);
+        bool passHeld = GameInput.Held(GameAction.Pass);
         bool throughHeld = GameInput.Held(GameAction.Through);
         bool shootDown = GameInput.Pressed(GameAction.Shoot);
-        bool shootUp = GameInput.Released(GameAction.Shoot);
         bool shootHeld = GameInput.Held(GameAction.Shoot);
         if (dir.sqrMagnitude > 0.02f) lastUserInput = Time.time;
 
@@ -68,21 +68,35 @@ public partial class MatchController
         if (hasBall)
         {
             c.aiAssist = false;
-            if (passDown) { UserPass(c, dir, false); return; }
-            if (throughDown) { UserPass(c, dir, true); return; }
-            if (shootDown) { charging = true; shotCharge = 0f; }
+            if (!charging)
+            {
+                if (passDown) { charging = true; chargeKind = 1; shotCharge = 0f; }
+                else if (throughDown) { charging = true; chargeKind = 2; shotCharge = 0f; }
+                else if (shootDown) { charging = true; chargeKind = 3; shotCharge = 0f; }
+            }
             if (charging)
             {
-                shotCharge = Mathf.Min(1f, shotCharge + dt / 0.9f);
-                if (shootUp || !shootHeld)
+                bool held = chargeKind == 1 ? passHeld : chargeKind == 2 ? throughHeld : shootHeld;
+                shotCharge = Mathf.Min(1f, shotCharge + dt / (chargeKind == 3 ? 0.9f : 1.0f));
+                bool tap = shotCharge < 0.17f;
+                if (chargeKind != 3)
+                {
+                    Vector3 aimDir = dir.sqrMagnitude > 0.09f ? dir.normalized : c.transform.forward;
+                    previewMate = tap ? BestMateInDirection(c, aimDir, 45f) : PassTargetFor(c, aimDir, PassRange(shotCharge), 40f);
+                }
+                else previewMate = null;
+                if (!held)
                 {
                     charging = false;
-                    UserShoot(c, dir, shotCharge);
+                    previewMate = null;
+                    if (chargeKind == 3) UserShoot(c, dir, tap ? 0.6f : shotCharge);
+                    else UserPass(c, dir, chargeKind == 2, tap ? -1f : shotCharge);
                 }
             }
             return;
         }
 
+        previewMate = null;
         charging = false;
         if (attacking && ball.IsFree)
         {
@@ -126,17 +140,56 @@ public partial class MatchController
         }
     }
 
-    void UserPass(MatchPlayer c, Vector3 dir, bool through)
+    /// <summary>How far a pass of the given power (0..1) is meant to travel.</summary>
+    static float PassRange(float power) { return Mathf.Lerp(6f, 55f, power); }
+
+    MatchPlayer PassTargetFor(MatchPlayer from, Vector3 aim, float range, float maxAngle)
+    {
+        MatchPlayer best = null;
+        float bestScore = float.MaxValue;
+        foreach (var m in teams[from.team])
+        {
+            if (m == from) continue;
+            Vector3 v = m.Pos - from.Pos;
+            v.y = 0f;
+            float d = v.magnitude;
+            if (d < 2.5f || d > 62f) continue;
+            float ang = Vector3.Angle(aim, v);
+            if (ang > maxAngle) continue;
+            if (m.isGK && ang > 20f) continue;
+            float score = ang * 1.1f + Mathf.Abs(d - range) * 1.0f;
+            if (score < bestScore) { bestScore = score; best = m; }
+        }
+        return best;
+    }
+
+    /// <param name="power">-1 = quick tap (automatic power from distance), 0..1 = charged pass (slow..hard / short..long).</param>
+    void UserPass(MatchPlayer c, Vector3 dir, bool through, float power = -1f)
     {
         Vector3 aim = dir.sqrMagnitude > 0.09f ? dir.normalized : c.transform.forward;
-        var mate = BestMateInDirection(c, aim, 45f);
-        if (mate == null)
+        if (power < 0f)
         {
-            Vector3 pt = ClampInPitch(c.Pos + aim * (through ? 18f : 10f), 0.5f);
-            KickToPoint(c, pt, through, 3f, Ball.R, null);
+            var auto = BestMateInDirection(c, aim, 45f);
+            if (auto == null)
+            {
+                Vector3 pt = ClampInPitch(c.Pos + aim * (through ? 18f : 10f), 0.5f);
+                KickToPoint(c, pt, through, 3f, Ball.R, null);
+                return;
+            }
+            DoPass(c, auto, through);
             return;
         }
-        DoPass(c, mate, through);
+
+        float range = PassRange(power);
+        var mate = PassTargetFor(c, aim, range, 40f);
+        if (mate == null)
+        {
+            Vector3 pt = ClampInPitch(c.Pos + aim * range, 0.5f);
+            bool lob = through || range > 30f;
+            KickToPoint(c, pt, lob, Mathf.Lerp(2.5f, 10f, power), Ball.R, null);
+            return;
+        }
+        DoPass(c, mate, through, power);
     }
 
     void UserShoot(MatchPlayer c, Vector3 dir, float charge)
@@ -197,7 +250,7 @@ public partial class MatchController
         return best;
     }
 
-    void DoPass(MatchPlayer from, MatchPlayer mate, bool through)
+    void DoPass(MatchPlayer from, MatchPlayer mate, bool through, float power = -1f)
     {
         float d = Flat(from.Pos, mate.Pos);
         Vector3 point;
@@ -220,7 +273,9 @@ public partial class MatchController
         float err = (1f - from.passSkill / 100f) * (0.5f + d * 0.06f) * ErrorScale(from);
         point += new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)) * err;
         mate.expectBallUntil = Time.time + 3f;
-        KickToPoint(from, point, lofted, through ? 2.5f : 4.5f, Ball.R, mate);
+        float arrive = through ? 2.5f : 4.5f;
+        if (power >= 0f) arrive = Mathf.Lerp(2.5f, 13f, power);   // soft touch .. driven pass
+        KickToPoint(from, point, lofted, arrive, Ball.R, mate);
         if (from.team == 0) SetControlled(mate);
     }
 

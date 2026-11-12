@@ -4,6 +4,7 @@ using UnityEngine;
 public class Ball : MonoBehaviour
 {
     public const float R = 0.11f;
+    public const float VisualScale = 1.9f;
     public const float GroundDamping = 0.42f;
     public const float AirDamping = 0.05f;
 
@@ -35,16 +36,26 @@ public class Ball : MonoBehaviour
 
     Rigidbody rb;
     SphereCollider col;
+    GameObject blob;
     float dribblePhase;
 
     public void Init(Material mat)
     {
         gameObject.name = "Ball";
-        var mf = gameObject.AddComponent<MeshFilter>();
-        mf.sharedMesh = MeshUtil.Sphere;
-        var mr = gameObject.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = mat;
         transform.localScale = Vector3.one * (R * 2f);
+
+        // Visual is drawn ~2x bigger than the physics ball so it can be seen from the broadcast camera.
+        var vis = MeshUtil.Part("Visual", transform, MeshUtil.SphereHi, mat, Vector3.zero, Vector3.one * VisualScale);
+        vis.transform.localPosition = Vector3.zero;
+
+        // Ground shadow blob (stays visible and shows height of lofted passes)
+        blob = new GameObject("BallShadow");
+        blob.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+        blob.AddComponent<MeshFilter>().sharedMesh = MeshUtil.DoubleQuad();
+        var br = blob.AddComponent<MeshRenderer>();
+        br.sharedMaterial = MatLib.Cutout(BlobTexture(), new Color(0.04f, 0.12f, 0.03f), Vector2.one);
+        br.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        br.receiveShadows = false;
 
         col = gameObject.AddComponent<SphereCollider>();
         col.radius = 0.5f;
@@ -200,8 +211,37 @@ public class Ball : MonoBehaviour
         return res;
     }
 
+    static Texture2D blobTex;
+    static Texture2D BlobTexture()
+    {
+        if (blobTex != null) return blobTex;
+        const int n = 32;
+        blobTex = new Texture2D(n, n, TextureFormat.RGBA32, false);
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float dx = (x + 0.5f) / n * 2f - 1f, dy = (y + 0.5f) / n * 2f - 1f;
+                blobTex.SetPixel(x, y, new Color(1f, 1f, 1f, dx * dx + dy * dy < 0.9f ? 1f : 0f));
+            }
+        blobTex.Apply();
+        blobTex.filterMode = FilterMode.Bilinear;
+        blobTex.wrapMode = TextureWrapMode.Clamp;
+        return blobTex;
+    }
+
+    void OnDestroy() { if (blob != null) Destroy(blob); }
+
     void LateUpdate()
     {
+        if (blob != null)
+        {
+            Vector3 bp = transform.position;
+            float h = Mathf.Max(0f, bp.y - R);
+            float sz = Mathf.Lerp(0.42f, 0.25f, Mathf.Clamp01(h / 4f));
+            blob.transform.position = new Vector3(bp.x, 0.022f, bp.z);
+            blob.transform.localScale = new Vector3(sz, sz, 1f);
+            blob.SetActive(Owner == null || bp.y > R + 0.3f);
+        }
         float dt = Time.deltaTime;
         if (Owner != null)
         {

@@ -6,8 +6,8 @@ public class CameraRig : MonoBehaviour
     public enum Mode { Menu, Broadcast }
 
     public Mode mode = Mode.Menu;
-    public float height = 15.5f;
-    public float back = 21f;
+    public float height = 12.6f;
+    public float back = 17.5f;
 
     Camera cam;
     Transform target;

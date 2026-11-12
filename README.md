@@ -37,6 +37,8 @@ GitHub ko Unity chalane ke liye aapka free Unity Personal license chahiye.
 | Through ball (attack) / Press (defence, hold) | THROUGH / PRESS | L |
 | Shoot, hold = power (attack) / Tackle (defence) | SHOOT / TACKLE | K |
 
+**Power control:** PASS, THROUGH aur SHOOT ko **dabaye rakhein** to power bar bharta hai (halka/chhota → zor se/lamba). Sirf tap karein to game khud distance dekh kar power set karta hai (qareeb wale ko halka pass, door wale ko lamba). Bar bharte waqt jis player ko pass jayega uska naam dikhta hai.
+
 Set pieces: THROW / SHORT, LOB, CROSS / LONG buttons appear automatically.
 
 ## Project structure

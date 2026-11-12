@@ -48,7 +48,7 @@ public class MatchPlayer : MonoBehaviour
 
     public bool Stunned => Time.time < stunUntil;
 
-    public void Init(PlayerData d, int team, int slot, FormationSlot fs, Material shirt, Material shorts, Material socks, Material boots, Material gloves)
+    public void Init(PlayerData d, int team, int slot, FormationSlot fs, Material shirt, Material shorts, Material socks, Material boots, Material gloves, int number)
     {
         data = d;
         this.team = team;
@@ -89,10 +89,16 @@ public class MatchPlayer : MonoBehaviour
         var hair = MatLib.Lit(HumanoidRig.HairColors[(h / 7) % HumanoidRig.HairColors.Length], 0.2f);
         float scale = 0.95f + ((h / 13) % 10) * 0.011f;
 
+        Color skinCol = HumanoidRig.SkinTones[h % HumanoidRig.SkinTones.Length];
+        Color hairCol = HumanoidRig.HairColors[(h / 7) % HumanoidRig.HairColors.Length];
+        Color trim = BodyMesh.Contrast(shirt.color, shorts.color);
+        var torsoMat = BodyMesh.ShirtMaterial(shirt.color, trim, number, isGK);
+        var headMat = BodyMesh.HeadMaterial(skinCol, hairCol, (h / 5) % 3);
+
         var rigGo = new GameObject("Rig");
         rigGo.transform.SetParent(transform, false);
         rig = rigGo.AddComponent<HumanoidRig>();
-        rig.Build(shirt, shorts, socks, skin, hair, boots, isGK ? gloves : skin, scale);
+        rig.Build(shirt, shorts, socks, skin, hair, boots, isGK ? gloves : skin, scale, torsoMat, headMat, (h / 3) % 3, isGK);
         rig.keeperStance = isGK;
     }
 

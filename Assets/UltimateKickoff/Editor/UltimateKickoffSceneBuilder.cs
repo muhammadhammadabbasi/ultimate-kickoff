@@ -34,10 +34,14 @@ public static class UltimateKickoffSceneBuilder
 
         var lit = CreateMaterial("TemplateLit", false);
         var cutout = CreateMaterial("TemplateCutout", true);
+        var grass = CreateMaterial("TemplateGrass", false);
+        grass.EnableKeyword("_DETAIL_MULX2");   // keeps the detail-map shader variant in the build
+        EditorUtility.SetDirty(grass);
 
         var app = new GameObject("App").AddComponent<AppController>();
         app.litTemplate = lit;
         app.cutoutTemplate = cutout;
+        app.grassTemplate = grass;
 
         var cam = Camera.main;
         if (cam != null)

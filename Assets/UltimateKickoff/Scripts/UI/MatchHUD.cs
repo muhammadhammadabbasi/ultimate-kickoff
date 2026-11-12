@@ -6,7 +6,7 @@ public class MatchHUD : MonoBehaviour
 {
     MatchController m;
     RectTransform root;
-    Text scoreText, clockText, msgMain, msgSub, toastText, nameTag, receiverTag;
+    Text scoreText, clockText, msgMain, msgSub, toastText, nameTag, receiverTag, powerLabel;
     Image powerFill, marker;
     GameObject powerBar, pauseOverlay, msgGroup;
     RectTransform minimap;
@@ -36,21 +36,21 @@ public class MatchHUD : MonoBehaviour
         UIKit.Btn(root, "II", new Color(0.05f, 0.07f, 0.12f, 0.85f), new Vector2(1f, 1f), new Vector2(-28f, -22f), new Vector2(96f, 78f), () => OpenPause(), 38);
 
         // Minimap
-        var mm = UIKit.Img(root, "Minimap", UIKit.RoundedSmall, new Color(0.1f, 0.4f, 0.15f, 0.62f), new Vector2(0.5f, 0f), new Vector2(0f, 22f), new Vector2(340f, 220f));
+        var mm = UIKit.Img(root, "Minimap", UIKit.RoundedSmall, new Color(0.1f, 0.4f, 0.15f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(300f, 192f));
         UIKit.Outlined(mm, new Color(1f, 1f, 1f, 0.5f), 2f);
         minimap = mm.rectTransform;
-        UIKit.Img(mm.transform, "Half", null, new Color(1f, 1f, 1f, 0.45f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(2f, 220f));
-        UIKit.Img(mm.transform, "Circle", UIKit.Ring, new Color(1f, 1f, 1f, 0.45f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(56f, 56f));
-        UIKit.Img(mm.transform, "BoxL", null, new Color(1f, 1f, 1f, 0.25f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(52f, 130f));
-        UIKit.Img(mm.transform, "BoxR", null, new Color(1f, 1f, 1f, 0.25f), new Vector2(1f, 0.5f), Vector2.zero, new Vector2(52f, 130f));
+        UIKit.Img(mm.transform, "Half", null, new Color(1f, 1f, 1f, 0.45f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(2f, 192f));
+        UIKit.Img(mm.transform, "Circle", UIKit.Ring, new Color(1f, 1f, 1f, 0.45f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(50f, 50f));
+        UIKit.Img(mm.transform, "BoxL", null, new Color(1f, 1f, 1f, 0.25f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(46f, 114f));
+        UIKit.Img(mm.transform, "BoxR", null, new Color(1f, 1f, 1f, 0.25f), new Vector2(1f, 0.5f), Vector2.zero, new Vector2(46f, 114f));
         dots = new Image[m.all.Count];
         for (int i = 0; i < m.all.Count; i++)
         {
             var p = m.all[i];
             Color c = p.team == 0 ? new Color(0.35f, 0.95f, 1f) : new Color(1f, 0.35f, 0.3f);
-            dots[i] = UIKit.Img(mm.transform, "Dot", p.team == 0 ? UIKit.Circle : UIKit.Triangle, c, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(15f, 15f));
+            dots[i] = UIKit.Img(mm.transform, "Dot", p.team == 0 ? UIKit.Circle : UIKit.Triangle, c, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(13f, 13f));
         }
-        ballDot = UIKit.Img(mm.transform, "BallDot", UIKit.Circle, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(11f, 11f));
+        ballDot = UIKit.Img(mm.transform, "BallDot", UIKit.Circle, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(10f, 10f));
         UIKit.Outlined(ballDot, Color.black, 1f);
 
         // Name tags (follow players)
@@ -101,11 +101,14 @@ public class MatchHUD : MonoBehaviour
         MakeButton(GameAction.Through, "THROUGH", new Vector2(-385f, 300f), 165f, new Color(0.62f, 0.5f, 0.12f, 0.8f));
         MakeButton(GameAction.Pass, "PASS", new Vector2(-410f, 115f), 170f, new Color(0.13f, 0.35f, 0.62f, 0.8f));
 
-        powerBar = UIKit.Img(root, "PowerBg", UIKit.RoundedSmall, new Color(0f, 0f, 0f, 0.6f), new Vector2(1f, 0f), new Vector2(-75f, 505f), new Vector2(200f, 22f)).gameObject;
+        powerBar = UIKit.Img(root, "PowerBg", UIKit.RoundedSmall, new Color(0f, 0f, 0f, 0.7f), new Vector2(1f, 0f), new Vector2(-300f, 560f), new Vector2(380f, 34f)).gameObject;
+        powerBar.GetComponent<Image>().rectTransform.pivot = new Vector2(0.5f, 0.5f);
         powerFill = UIKit.Img(powerBar.transform, "Fill", UIKit.RoundedSmall, new Color(1f, 0.6f, 0.1f));
-        UIKit.Stretch(powerFill.rectTransform, 3, 3, 3, 3);
+        UIKit.Stretch(powerFill.rectTransform, 4, 4, 4, 4);
         powerFill.type = Image.Type.Filled;
         powerFill.fillMethod = Image.FillMethod.Horizontal;
+        powerLabel = UIKit.Txt(powerBar.transform, "POWER", 26, Color.white, new Vector2(0.5f, 1f), new Vector2(0f, 24f), new Vector2(380f, 36f));
+        UIKit.Shadowed(powerLabel, 2f, 0.9f);
         powerBar.SetActive(false);
     }
 
@@ -120,9 +123,7 @@ public class MatchHUD : MonoBehaviour
         var t = UIKit.FillText(face.transform, label, Mathf.RoundToInt(size * 0.17f), Color.white);
         UIKit.Shadowed(t, 2f, 0.7f);
         var b = face.gameObject.AddComponent<TouchButton>();
-        b.action = a;
-        b.face = face;
-        b.label = t;
+        b.Setup(a, face, t);
     }
 
     void BuildPause()
@@ -224,7 +225,16 @@ public class MatchHUD : MonoBehaviour
         GameInput.SetLabel(GameAction.Sprint, "SPRINT");
 
         powerBar.SetActive(m.charging);
-        if (m.charging) powerFill.fillAmount = m.shotCharge;
+        if (m.charging)
+        {
+            float v = m.shotCharge;
+            bool tap = v < 0.17f;
+            powerFill.fillAmount = Mathf.Max(v, 0.04f);
+            powerFill.color = v < 0.5f ? Color.Lerp(new Color(0.3f, 0.9f, 0.3f), new Color(1f, 0.85f, 0.15f), v * 2f)
+                                       : Color.Lerp(new Color(1f, 0.85f, 0.15f), new Color(1f, 0.25f, 0.15f), (v - 0.5f) * 2f);
+            string what = m.chargeKind == 3 ? "SHOT" : m.chargeKind == 2 ? "THROUGH" : "PASS";
+            powerLabel.text = tap ? what + " POWER (hold)" : what + " POWER " + Mathf.RoundToInt(v * 100f) + "%";
+        }
 
         // Minimap
         Vector2 size = minimap.rect.size;
@@ -234,7 +244,7 @@ public class MatchHUD : MonoBehaviour
             dots[i].rectTransform.anchoredPosition = MapPos(p.Pos, size);
             bool ctrl = p == m.controlled;
             dots[i].color = ctrl ? new Color(1f, 0.9f, 0.15f) : (p.team == 0 ? new Color(0.35f, 0.95f, 1f) : new Color(1f, 0.35f, 0.3f));
-            dots[i].rectTransform.sizeDelta = ctrl ? new Vector2(20f, 20f) : new Vector2(15f, 15f);
+            dots[i].rectTransform.sizeDelta = ctrl ? new Vector2(18f, 18f) : new Vector2(13f, 13f);
         }
         ballDot.rectTransform.anchoredPosition = MapPos(m.ball.Pos, size);
         ballDot.transform.SetAsLastSibling();
@@ -251,8 +261,8 @@ public class MatchHUD : MonoBehaviour
         }
         else marker.enabled = nameTag.enabled = false;
 
-        var r = m.ball.IntendedReceiver;
-        if (cam != null && r != null && r != c && m.ball.IsFree && r.team == 0)
+        var r = (m.charging && m.previewMate != null) ? m.previewMate : m.ball.IntendedReceiver;
+        if (cam != null && r != null && r != c && (m.charging || m.ball.IsFree) && r.team == 0)
         {
             receiverTag.enabled = true;
             receiverTag.rectTransform.anchoredPosition = WorldToHud(cam, r.Pos) + new Vector2(0f, -24f);

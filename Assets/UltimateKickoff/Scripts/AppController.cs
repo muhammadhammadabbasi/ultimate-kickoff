@@ -11,6 +11,7 @@ public class AppController : MonoBehaviour
     [Header("Template materials (assigned by the scene builder)")]
     public Material litTemplate;
     public Material cutoutTemplate;
+    public Material grassTemplate;
 
     RectTransform uiRoot;
     CameraRig camRig;
@@ -31,7 +32,7 @@ public class AppController : MonoBehaviour
         Screen.orientation = ScreenOrientation.AutoRotation;
         Input.multiTouchEnabled = true;
 
-        MatLib.Init(litTemplate, cutoutTemplate);
+        MatLib.Init(litTemplate, cutoutTemplate, grassTemplate);
         Squad.Load();
 
         var cam = Camera.main;

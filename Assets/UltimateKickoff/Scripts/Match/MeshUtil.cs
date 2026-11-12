@@ -50,13 +50,14 @@ public static class Pitch
 /// <summary>Runtime materials (cloned from template materials in the scene so shaders are included in the build).</summary>
 public static class MatLib
 {
-    static Material lit, cutout;
+    static Material lit, cutout, grass;
     static readonly Dictionary<int, Material> cache = new Dictionary<int, Material>();
 
-    public static void Init(Material litTemplate, Material cutoutTemplate)
+    public static void Init(Material litTemplate, Material cutoutTemplate, Material grassTemplate = null)
     {
         lit = litTemplate;
         cutout = cutoutTemplate;
+        grass = grassTemplate;
         cache.Clear();
     }
 
@@ -85,6 +86,23 @@ public static class MatLib
         return m;
     }
 
+    /// <summary>Pitch material: base mowing texture + tiled blade detail (when the detail variant is in the build).</summary>
+    public static Material Grass(Texture baseTex, Texture detailTex, Vector2 detailTiling)
+    {
+        var m = new Material(grass != null ? grass : lit);
+        m.color = Color.white;
+        m.mainTexture = baseTex;
+        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.06f);
+        if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+        if (grass != null && m.HasProperty("_DetailAlbedoMap"))
+        {
+            m.SetTexture("_DetailAlbedoMap", detailTex);
+            m.SetTextureScale("_DetailAlbedoMap", detailTiling);
+            m.EnableKeyword("_DETAIL_MULX2");
+        }
+        return m;
+    }
+
     public static Material Cutout(Texture tex, Color tint, Vector2 tiling)
     {
         var m = new Material(cutout);
@@ -104,13 +122,16 @@ public static class MatLib
 
 public static class MeshUtil
 {
-    static Mesh capsule, sphere;
+    static Mesh capsule, sphere, sphereHi;
 
     /// <summary>Low-poly capsule, same size as Unity's primitive (radius 0.5, height 2).</summary>
     public static Mesh Capsule { get { if (capsule == null) capsule = BuildRounded(10, 3, 0.5f); return capsule; } }
 
     /// <summary>Low-poly sphere, diameter 1.</summary>
     public static Mesh Sphere { get { if (sphere == null) sphere = BuildRounded(12, 4, 0f); return sphere; } }
+
+    /// <summary>Smoother sphere (diameter 1) for the ball, boots and hands.</summary>
+    public static Mesh SphereHi { get { if (sphereHi == null) sphereHi = BuildRounded(24, 10, 0f); return sphereHi; } }
 
     static Mesh BuildRounded(int seg, int hemi, float halfLen)
     {

@@ -17,7 +17,7 @@ public static class StadiumBuilder
         outer.transform.SetParent(root);
         outer.transform.position = new Vector3(0f, -0.02f, 0f);
         outer.transform.localScale = new Vector3(26f, 1f, 20f);
-        outer.GetComponent<Renderer>().sharedMaterial = MatLib.Lit(new Color(0.16f, 0.36f, 0.16f), 0.05f);
+        outer.GetComponent<Renderer>().sharedMaterial = MatLib.Lit(new Color(0.10f, 0.25f, 0.09f), 0.03f);
 
         // Pitch with mowing stripes (includes run-off area)
         var pitch = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -25,7 +25,7 @@ public static class StadiumBuilder
         pitch.transform.SetParent(root);
         pitch.transform.position = Vector3.zero;
         pitch.transform.localScale = new Vector3((Pitch.L + 10f) / 10f, 1f, (Pitch.W + 8f) / 10f);
-        var grassMat = MatLib.Textured(GrassTexture(), Color.white, Vector2.one, 0.12f);
+        var grassMat = MatLib.Grass(GrassTexture(), GrassDetailTexture(), new Vector2(totalDetailTiles(Pitch.L + 10f), totalDetailTiles(Pitch.W + 8f)));
         pitch.GetComponent<Renderer>().sharedMaterial = grassMat;
         pitch.GetComponent<Renderer>().receiveShadows = true;
 
@@ -39,6 +39,8 @@ public static class StadiumBuilder
         BuildDugouts(root);
         return root;
     }
+
+    static float totalDetailTiles(float metres) { return metres / 2.2f; }
 
     static void SetupLighting()
     {
@@ -75,36 +77,119 @@ public static class StadiumBuilder
 
     static Texture2D GrassTexture()
     {
-        const int w = 1024, h = 512;
+        const int w = 2048, h = 1024;
         var tex = new Texture2D(w, h, TextureFormat.RGBA32, true);
-        Color light = new Color(0.30f, 0.62f, 0.25f);
-        Color dark = new Color(0.24f, 0.52f, 0.2f);
+        float totalL = Pitch.L + 10f, totalW = Pitch.W + 8f;
+        Color light = new Color(0.25f, 0.54f, 0.20f);
+        Color dark = new Color(0.17f, 0.42f, 0.14f);
+        Color edge = new Color(0.11f, 0.29f, 0.10f);
+        Color worn = new Color(0.36f, 0.42f, 0.18f);
         var rnd = new System.Random(7);
-        float pitchStartU = 5f / (Pitch.L + 10f);
-        float pitchEndU = 1f - pitchStartU;
-        var px = new Color[w * h];
-        for (int y = 0; y < h; y++)
+        var px = new Color32[w * h];
+        const float stripeLen = Pitch.L / 20f;
+
+        // Per-column stripe colour (depends on x only)
+        var colX = new Color[w];
+        var wxs = new float[w];
+        for (int x = 0; x < w; x++)
         {
-            float v = (float)y / h;
-            for (int x = 0; x < w; x++)
+            float wx = ((float)x / w - 0.5f) * totalL;
+            wxs[x] = wx;
+            float sp = (wx + Pitch.HalfL) / stripeLen;
+            float fract = sp - Mathf.Floor(sp);
+            float edgeSoft = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(fract / 0.05f)) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - fract) / 0.05f));
+            bool even = ((int)Mathf.Floor(sp) & 1) == 0;
+            Color c = even ? light : dark;
+            c *= 0.96f + 0.08f * Mathf.Abs(fract - 0.5f) * 2f * (even ? 1f : -1f);
+            colX[x] = Color.Lerp(Color.Lerp(light, dark, 0.5f), c, edgeSoft * 0.3f + 0.7f);
+        }
+
+        // Low-frequency noise on a coarse grid (cheap), sampled with nearest filtering
+        const int gw = 512, gh = 256;
+        var grid = new float[gw * gh];
+        for (int gy = 0; gy < gh; gy++)
+        {
+            float gz = ((float)gy / gh - 0.5f) * totalW;
+            for (int gx = 0; gx < gw; gx++)
             {
-                float u = (float)x / w;
-                float pu = Mathf.InverseLerp(pitchStartU, pitchEndU, u);
-                int stripe = Mathf.FloorToInt(pu * 18f);
-                Color c = (stripe % 2 == 0) ? light : dark;
-                if (u < pitchStartU || u > pitchEndU || v < 4f / (Pitch.W + 8f) || v > 1f - 4f / (Pitch.W + 8f))
-                    c = Color.Lerp(dark, light, 0.4f) * 0.95f;
-                float noise = (float)rnd.NextDouble() * 0.07f - 0.035f;
-                float big = Mathf.PerlinNoise(u * 18f, v * 12f) * 0.06f - 0.03f;
-                c = new Color(c.r + noise + big, c.g + noise * 1.4f + big, c.b + noise + big, 1f);
-                px[y * w + x] = c;
+                float gwx = ((float)gx / gw - 0.5f) * totalL;
+                grid[gy * gw + gx] = (Mathf.PerlinNoise(gwx * 0.07f + 11f, gz * 0.07f + 3f) - 0.5f) * 0.09f
+                                   + (Mathf.PerlinNoise(gwx * 0.9f, gz * 0.9f) - 0.5f) * 0.05f;
             }
         }
-        tex.SetPixels(px);
+
+        for (int y = 0; y < h; y++)
+        {
+            float wz = ((float)y / h - 0.5f) * totalW;
+            float az = Mathf.Abs(wz);
+            float oz = Mathf.Max(0f, az - Pitch.HalfW - 1.5f);
+            float goalZ = Mathf.Max(0f, 1f - az / 9f);
+            int gyi = Mathf.Min(gh - 1, y * gh / h);
+            for (int x = 0; x < w; x++)
+            {
+                float wx = wxs[x];
+                Color c = colX[x];
+                float n = grid[gyi * gw + Mathf.Min(gw - 1, x * gw / w)] + ((float)rnd.NextDouble() - 0.5f) * 0.045f;
+                c = new Color(c.r + n * 0.8f, c.g + n * 1.2f, c.b + n * 0.6f, 1f);
+
+                // worn goalmouths and centre spot
+                float ax = Mathf.Abs(wx);
+                float gm = Mathf.Max(0f, 1f - Mathf.Min(Mathf.Abs(ax - Pitch.HalfL + 6f) / 9f, 1f)) * goalZ;
+                float cs = Mathf.Max(0f, 1f - Mathf.Sqrt(wx * wx + wz * wz) / 6f);
+                float wearAmt = gm * 0.35f + cs * 0.15f;
+                if (wearAmt > 0.001f) c = Color.Lerp(c, worn, Mathf.Clamp01(wearAmt));
+
+                // fade to dark outside the touchlines so it blends with the surrounding ground
+                float ox = Mathf.Max(0f, ax - Pitch.HalfL - 1.5f);
+                if (ox > 0f || oz > 0f)
+                {
+                    float outside = Mathf.Clamp01(Mathf.Sqrt(ox * ox + oz * oz) / 3f);
+                    c = Color.Lerp(c, edge, outside);
+                }
+                px[y * w + x] = (Color32)c;
+            }
+        }
+        tex.SetPixels32(px);
         tex.Apply(true);
         tex.wrapMode = TextureWrapMode.Clamp;
         tex.filterMode = FilterMode.Trilinear;
         tex.anisoLevel = 8;
+        return tex;
+    }
+
+    /// <summary>Tileable grass-blade detail (mid grey = neutral) used as the Standard shader detail map.</summary>
+    static Texture2D GrassDetailTexture()
+    {
+        const int n = 256;
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, true);
+        var rnd = new System.Random(21);
+        var px = new float[n * n];
+        for (int i = 0; i < px.Length; i++) px[i] = 0.5f;
+        // short vertical blade strokes, wrapped so the tile is seamless
+        for (int k = 0; k < 5200; k++)
+        {
+            int bx = rnd.Next(n), by = rnd.Next(n);
+            int len = 3 + rnd.Next(6);
+            float v = (float)rnd.NextDouble() < 0.5f ? 0.38f : 0.62f;
+            float lean = ((float)rnd.NextDouble() - 0.5f) * 0.6f;
+            for (int j = 0; j < len; j++)
+            {
+                int xx = ((bx + Mathf.RoundToInt(lean * j)) % n + n) % n;
+                int yy = (by + j) % n;
+                px[yy * n + xx] = Mathf.Lerp(px[yy * n + xx], v, 0.8f);
+            }
+        }
+        var cols = new Color32[n * n];
+        for (int i = 0; i < cols.Length; i++)
+        {
+            float g = Mathf.Clamp01(px[i] + ((float)rnd.NextDouble() - 0.5f) * 0.06f);
+            cols[i] = (Color32)new Color(g, g, g, 1f);
+        }
+        tex.SetPixels32(cols);
+        tex.Apply(true);
+        tex.wrapMode = TextureWrapMode.Repeat;
+        tex.filterMode = FilterMode.Bilinear;
+        tex.anisoLevel = 4;
         return tex;
     }
 
