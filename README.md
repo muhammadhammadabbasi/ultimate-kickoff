@@ -33,15 +33,20 @@ GitHub ko Unity chalane ke liye aapka free Unity Personal license chahiye.
 |---|---|---|
 | Move | Left joystick | WASD / Arrows |
 | Sprint | SPRINT | Left Shift |
-| Pass / switch player | PASS | J |
-| Shoot (hold = power) | SHOOT | K |
+| Pass (attack) / Switch player (defence) | PASS / SWITCH | J |
+| Through ball (attack) / Press (defence, hold) | THROUGH / PRESS | L |
+| Shoot, hold = power (attack) / Tackle (defence) | SHOOT / TACKLE | K |
+
+Set pieces: THROW / SHORT, LOB, CROSS / LONG buttons appear automatically.
 
 ## Project structure
 
 | Path | Kaam |
 |---|---|
-| `Assets/FootballPrototype/Scripts/` | Gameplay: ball, players + AI, goalkeepers, match, mobile controls |
-| `Assets/FootballPrototype/Editor/FootballPrototypeBuilder.cs` | Pura stadium/scene code se banata hai (Unity mein: Tools → Football Prototype → Build Scene) |
+| `Assets/UltimateKickoff/Scripts/Data/` | ~170 players (badle hue naam) + stats, clubs, formations, aapki lineup (save hoti hai) |
+| `Assets/UltimateKickoff/Scripts/Match/` | 11v11 match: stadium, 3D players + animations, ball physics, team AI, goalkeepers, set pieces, broadcast camera |
+| `Assets/UltimateKickoff/Scripts/UI/` | Home, My Team (cards + player picker), opponent select, match HUD (minimap, buttons), result |
+| `Assets/UltimateKickoff/Editor/UltimateKickoffSceneBuilder.cs` | Scene banata hai (Unity mein: Tools → Ultimate Kickoff → Build Scene) |
 | `Assets/Editor/CIBuild.cs` | GitHub par APK build karne wala script |
 | `.github/workflows/build-android.yml` | Automatic APK build + release |
 
@@ -52,8 +57,11 @@ GitHub ko Unity chalane ke liye aapka free Unity Personal license chahiye.
 
 ## Roadmap
 
-- [x] Phase 1: 3v3 + keepers, dribble, pass, shoot, tackle, score, 3-min match
-- [ ] Phase 2: 5v5 / 11v11, formations, set pieces
-- [ ] Phase 3: Real 3D players + animations, better stadium & lighting
-- [ ] Phase 4: Menus, teams, player cards, tournaments
-- [ ] Phase 5: Online PvP
+- [x] Phase 1: 3v3 prototype
+- [x] Phase 2: 11v11, formations, throw-ins, corners, goal kicks, keepers
+- [x] Phase 3 (basic): 3D players with running/kick/dive animations, stadium, crowd, broadcast camera
+- [x] Phase 4 (basic): Home, My Team lineup with player cards & stats, opponent clubs, results
+- [ ] Next: fouls & free kicks, skill moves, commentary/sound, tournaments, packs & coins
+- [ ] Later: Online PvP
+
+Note: player names are deliberately altered. Before publishing on the Play Store, change them to fully fictional names.

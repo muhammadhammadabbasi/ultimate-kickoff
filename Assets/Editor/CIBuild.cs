@@ -12,13 +12,13 @@ using UnityEngine;
 /// </summary>
 public static class CIBuild
 {
-    const string IconPath = "Assets/FootballPrototype/Generated/AppIcon.png";
+    const string IconPath = "Assets/UltimateKickoff/Generated/AppIcon.png";
 
     public static void BuildAndroid()
     {
         try
         {
-            FootballPrototypeBuilder.BuildCore();
+            UltimateKickoffSceneBuilder.BuildCore();
             ApplyPlayerSettings();
 
             string outPath = GetArg("-customBuildPath");
@@ -31,7 +31,7 @@ public static class CIBuild
 
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { FootballPrototypeBuilder.SceneAssetPath },
+                scenes = new[] { UltimateKickoffSceneBuilder.SceneAssetPath },
                 locationPathName = outPath,
                 target = BuildTarget.Android,
                 options = BuildOptions.None
@@ -68,7 +68,11 @@ public static class CIBuild
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
         PlayerSettings.Android.useCustomKeystore = false; // debug-signed APK, installs directly on the phone
 
-        PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+        PlayerSettings.allowedAutorotateToPortrait = false;
+        PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.allowedAutorotateToLandscapeRight = true;
 
         // Mobile-friendly quality
         QualitySettings.shadowDistance = 45f;
