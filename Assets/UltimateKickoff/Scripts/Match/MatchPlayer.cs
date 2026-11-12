@@ -54,7 +54,7 @@ public class MatchPlayer : MonoBehaviour
         this.team = team;
         this.slot = slot;
         slotInfo = fs;
-        isGK = fs.pos == Pos.GK;
+        isGK = fs.pos == global::Pos.GK;
         group = PlayerData.Group(fs.pos);
         gameObject.name = (team == 0 ? "H_" : "A_") + d.name;
 
