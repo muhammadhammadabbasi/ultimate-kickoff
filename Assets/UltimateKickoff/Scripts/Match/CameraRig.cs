@@ -15,8 +15,12 @@ public class CameraRig : MonoBehaviour
     Vector3 focusVel;
     float orbit;
 
-    void Awake()
+    void Awake() { Ensure(); }
+
+    /// <summary>Other scripts may call us before our own Awake has run.</summary>
+    void Ensure()
     {
+        if (cam != null) return;
         cam = GetComponent<Camera>();
         cam.nearClipPlane = 0.3f;
         cam.farClipPlane = 450f;
@@ -25,6 +29,7 @@ public class CameraRig : MonoBehaviour
 
     public void SetMenu()
     {
+        Ensure();
         mode = Mode.Menu;
         target = null;
         cam.fieldOfView = 45f;
@@ -32,6 +37,7 @@ public class CameraRig : MonoBehaviour
 
     public void SetBroadcast(Transform follow)
     {
+        Ensure();
         mode = Mode.Broadcast;
         target = follow;
         cam.fieldOfView = 40f;

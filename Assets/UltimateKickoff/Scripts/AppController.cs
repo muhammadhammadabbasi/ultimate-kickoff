@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(100)]
 /// <summary>Entry point: builds the stadium + UI and switches between Home, My Team, Play and Match.</summary>
 public class AppController : MonoBehaviour
 {
@@ -19,7 +20,55 @@ public class AppController : MonoBehaviour
     MatchController match;
     ClubData lastOpponent;
 
+    string startupError;
+    string runtimeError;
+    float runtimeErrorUntil;
+
+    void OnEnable() { Application.logMessageReceived += OnLog; }
+    void OnDisable() { Application.logMessageReceived -= OnLog; }
+
+    void OnLog(string msg, string stack, LogType type)
+    {
+        if (type != LogType.Exception) return;
+        if (runtimeError != null && Time.unscaledTime < runtimeErrorUntil) return;
+        string first = stack ?? "";
+        int nl = first.IndexOf('\n');
+        if (nl > 0) first = first.Substring(0, nl);
+        runtimeError = msg + "  @ " + first;
+        runtimeErrorUntil = Time.unscaledTime + 12f;
+    }
+
     void Awake()
+    {
+        try { Boot(); }
+        catch (System.Exception e)
+        {
+            startupError = e.ToString();
+            Debug.LogException(e);
+        }
+    }
+
+    // If start-up ever fails, show the reason on screen instead of an empty world.
+    void OnGUI()
+    {
+        if (string.IsNullOrEmpty(startupError))
+        {
+            if (runtimeError != null && Time.unscaledTime < runtimeErrorUntil)
+            {
+                var rs = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(12, Screen.height / 50), wordWrap = true };
+                rs.normal.textColor = new Color(1f, 0.85f, 0.3f);
+                GUI.Label(new Rect(20, Screen.height * 0.16f, Screen.width * 0.6f, Screen.height * 0.15f), "Error: " + runtimeError, rs);
+            }
+            return;
+        }
+        var st = new GUIStyle(GUI.skin.label) { fontSize = Mathf.Max(18, Screen.height / 32), wordWrap = true };
+        st.normal.textColor = Color.white;
+        GUI.color = Color.white;
+        GUI.Box(new Rect(0, 0, Screen.width, Screen.height), GUIContent.none);
+        GUI.Label(new Rect(30, 30, Screen.width - 60, Screen.height - 60), "Start-up error (screenshot bhej dein):\n\n" + startupError, st);
+    }
+
+    void Boot()
     {
         I = this;
         Application.targetFrameRate = 60;
