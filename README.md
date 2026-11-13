@@ -39,6 +39,10 @@ GitHub ko Unity chalane ke liye aapka free Unity Personal license chahiye.
 
 **Power control:** PASS, THROUGH aur SHOOT ko **dabaye rakhein** to power bar bharta hai (halka/chhota → zor se/lamba). Sirf tap karein to game khud distance dekh kar power set karta hai (qareeb wale ko halka pass, door wale ko lamba). Bar bharte waqt jis player ko pass jayega uska naam dikhta hai.
 
+**Goalkeeper:** jab aapke keeper ke haath mein ball ho to PASS = throw (joystick se direction), SHOOT = lambi kick. 6 second mein kuch na dabayein to keeper khud ball phenk deta hai.
+
+**Camera:** Pause (II) → CAMERA button se NEAR / MEDIUM / FAR chunein.
+
 Set pieces: THROW / SHORT, LOB, CROSS / LONG buttons appear automatically.
 
 ## Project structure

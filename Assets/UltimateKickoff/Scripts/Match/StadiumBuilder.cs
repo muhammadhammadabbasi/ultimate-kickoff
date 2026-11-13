@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -206,12 +207,12 @@ public static class StadiumBuilder
         };
         Color[] skins = { new Color(0.95f, 0.8f, 0.68f), new Color(0.8f, 0.6f, 0.45f), new Color(0.55f, 0.38f, 0.26f), new Color(0.35f, 0.24f, 0.16f) };
         var px = new Color[w * h];
-        for (int i = 0; i < px.Length; i++) px[i] = new Color(0.12f, 0.13f, 0.16f);
+        for (int i = 0; i < px.Length; i++) px[i] = new Color(0.2f, 0.22f, 0.27f);
         for (int row = 0; row < h / 8; row++)
         {
             for (int col = 0; col < w / 6; col++)
             {
-                if (rnd.NextDouble() < 0.08) continue;
+                if (col % 14 == 13 || rnd.NextDouble() < 0.06) continue;   // stairways + a few empty seats
                 Color shirt = shirts[rnd.Next(shirts.Length)];
                 Color skin = skins[rnd.Next(skins.Length)];
                 int bx = col * 6 + rnd.Next(2), by = row * 8 + rnd.Next(2);
@@ -417,7 +418,7 @@ public static class StadiumBuilder
         rt.position = new Vector3(0f, 0.5f, bz - 0.11f);
         rt.rotation = Quaternion.identity;
         rt.localScale = Vector3.one * 0.01f;
-        string[] words = { "ULTIMATE KICKOFF", "HAMMAD GAMES", "MATCH DAY", "ULTIMATE KICKOFF", "WORLD LEGENDS", "HAMMAD GAMES" };
+        string[] words = { "ULTIMATE KICKOFF", "HAMMAD GAMES", "ACADEMY GROUND", "ULTIMATE KICKOFF", "WORLD LEGENDS", "HAMMAD GAMES" };
         int n = 10;
         for (int i = 0; i < n; i++)
         {
@@ -428,63 +429,161 @@ public static class StadiumBuilder
         }
     }
 
+    // ------------------------------------------------------------------ bowl stadium ("Academy Ground")
+
+    const float RingA = Pitch.HalfL + 12f;   // inner edge of the stands (half length)
+    const float RingB = Pitch.HalfW + 10f;   // inner edge of the stands (half width)
+    const int RingSeg = 128;
+
+    /// <summary>Point on the stadium ring: angle t around the pitch, d metres outward from the inner edge, h metres up.</summary>
+    static Vector3 RingPoint(float t, float d, float h)
+    {
+        float c = Mathf.Cos(t), s = Mathf.Sin(t);
+        float ac = Mathf.Abs(c), asn = Mathf.Abs(s);
+        // rounded rectangle (superellipse, exponent 8)
+        float x = RingA * Mathf.Sign(c) * Mathf.Pow(ac, 0.25f);
+        float z = RingB * Mathf.Sign(s) * Mathf.Pow(asn, 0.25f);
+        float nx = Mathf.Sign(c) * Mathf.Pow(ac, 1.75f) / RingA;
+        float nz = Mathf.Sign(s) * Mathf.Pow(asn, 1.75f) / RingB;
+        float nl = Mathf.Sqrt(nx * nx + nz * nz);
+        if (nl < 1e-6f) { nx = c; nz = s; nl = 1f; }
+        return new Vector3(x + nx / nl * d, h, z + nz / nl * d);
+    }
+
+    /// <summary>Collects ring strips for one material. Faces point towards the pitch only, so the camera can look in from outside.</summary>
+    class RingMesh
+    {
+        readonly List<Vector3> v = new List<Vector3>();
+        readonly List<Vector3> n = new List<Vector3>();
+        readonly List<Vector2> uv = new List<Vector2>();
+        readonly List<int> tri = new List<int>();
+
+        /// <param name="p0">(distance out, height) of the lower/inner edge</param>
+        /// <param name="p1">(distance out, height) of the other edge</param>
+        public void Strip(Vector2 p0, Vector2 p1, float uTile, float vRepeat)
+        {
+            int start = v.Count;
+            float len0 = 0f, len1 = 0f;
+            Vector3 prevA = Vector3.zero, prevB = Vector3.zero;
+            Vector2 mid = (p0 + p1) * 0.5f;
+            for (int j = 0; j <= RingSeg; j++)
+            {
+                float t = (float)j / RingSeg * Mathf.PI * 2f;
+                Vector3 a = RingPoint(t, p0.x, p0.y), b = RingPoint(t, p1.x, p1.y);
+                if (j > 0) { len0 += Vector3.Distance(a, prevA); len1 += Vector3.Distance(b, prevB); }
+                prevA = a; prevB = b;
+                Vector3 tan = RingPoint(t + 0.004f, mid.x, mid.y) - RingPoint(t - 0.004f, mid.x, mid.y);
+                Vector3 nn = Vector3.Cross(tan, b - a).normalized;
+                v.Add(a); v.Add(b);
+                n.Add(nn); n.Add(nn);
+                uv.Add(new Vector2(len0 / uTile, 0f));
+                uv.Add(new Vector2(len1 / uTile, vRepeat));
+            }
+            for (int j = 0; j < RingSeg; j++)
+            {
+                int A = start + j * 2, C = A + 1, B = A + 2, D = A + 3;
+                tri.Add(A); tri.Add(B); tri.Add(C);
+                tri.Add(B); tri.Add(D); tri.Add(C);
+            }
+        }
+
+        public void Create(Transform parent, string name, Material mat)
+        {
+            var m = new Mesh();
+            m.SetVertices(v);
+            m.SetNormals(n);
+            m.SetUVs(0, uv);
+            m.SetTriangles(tri, 0);
+            m.RecalculateBounds();
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = m;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+        }
+    }
+
     static void BuildStands(Transform root)
     {
         var parent = new GameObject("Stands").transform;
         parent.SetParent(root);
-        var crowd = CrowdTexture();
-        var concrete = MatLib.Lit(new Color(0.32f, 0.34f, 0.38f), 0.05f);
-        var roofMat = MatLib.Lit(new Color(0.15f, 0.16f, 0.2f), 0.2f);
 
-        float startZ = Pitch.HalfW + 7f, startX = Pitch.HalfL + 8f;
-        float lengthX = Pitch.L + 30f, lengthZ = Pitch.W + 26f;
-        int tiersSide = 11, tiersEnd = 9, tiersNear = 6;
-        const float step = 2.1f, rise = 1.25f;
+        var crowdTex = CrowdTexture();
+        var crowdMat = MatLib.Textured(crowdTex, Color.white, Vector2.one, 0.02f);
+        var concrete = MatLib.Lit(new Color(0.36f, 0.38f, 0.42f), 0.05f);
+        var darkWall = MatLib.Lit(new Color(0.06f, 0.08f, 0.16f), 0.3f);
+        var ribbon = MatLib.Lit(new Color(0.12f, 0.45f, 0.95f), 0.6f);
+        var roofMat = MatLib.Lit(new Color(0.78f, 0.8f, 0.84f), 0.25f);
+        var roofEdge = MatLib.Lit(new Color(0.97f, 0.97f, 1f), 0.5f);
+        var lamps = MatLib.Lit(new Color(1f, 1f, 0.9f), 0.9f);
 
-        var crowdSide = MatLib.Textured(crowd, Color.white, new Vector2(lengthX / 9f, 1f), 0.02f);
-        var crowdEnd = MatLib.Textured(crowd, Color.white, new Vector2(lengthZ / 9f, 1f), 0.02f);
+        // Cross-section (distance outward, height)
+        var wallTop = new Vector2(0f, 2.6f);
+        var lowerTop = new Vector2(17f, 12.6f);
+        var balconyTop = new Vector2(17f, 15.4f);
+        var upperTop = new Vector2(37f, 32f);
+        var backTop = new Vector2(37f, 39f);
+        var roofBack = new Vector2(38f, 39.5f);
+        var roofFront = new Vector2(9f, 34.5f);
 
-        // Far side (+Z), near side (-Z), ends (+-X)
-        for (int i = 0; i < tiersSide; i++)
-        {
-            float h = rise * (i + 1);
-            Box(parent, "FarTier", new Vector3(0, h / 2f, startZ + i * step + step / 2f), new Vector3(lengthX, h, step), i % 3 == 2 ? concrete : crowdSide, false);
-        }
-        Box(parent, "FarWall", new Vector3(0, rise * tiersSide + 3f, startZ + tiersSide * step + 0.5f), new Vector3(lengthX, 6f, 1f), concrete, false);
-        Box(parent, "FarRoof", new Vector3(0, rise * tiersSide + 6.5f, startZ + tiersSide * step * 0.55f), new Vector3(lengthX, 0.5f, tiersSide * step * 1.1f), roofMat, false);
+        var crowd = new RingMesh();
+        crowd.Strip(new Vector2(0.4f, 2.6f), lowerTop, 13f, Vector2.Distance(wallTop, lowerTop) / 8f);
+        crowd.Strip(new Vector2(17.4f, 15.4f), upperTop, 13f, Vector2.Distance(balconyTop, upperTop) / 8f);
+        crowd.Create(parent, "Crowd", crowdMat);
 
-        for (int i = 0; i < tiersNear; i++)
-        {
-            float h = rise * (i + 1);
-            Box(parent, "NearTier", new Vector3(0, h / 2f, -(startZ + i * step + step / 2f)), new Vector3(lengthX, h, step), i % 3 == 2 ? concrete : crowdSide, false);
-        }
+        var walls = new RingMesh();
+        walls.Strip(Vector2.zero, wallTop, 10f, 1f);
+        walls.Strip(wallTop, new Vector2(0.4f, 2.6f), 10f, 1f);
+        walls.Create(parent, "PitchWall", darkWall);
 
-        foreach (float s in new[] { -1f, 1f })
-        {
-            for (int i = 0; i < tiersEnd; i++)
-            {
-                float h = rise * (i + 1);
-                Box(parent, "EndTier", new Vector3(s * (startX + i * step + step / 2f), h / 2f, 0), new Vector3(step, h, lengthZ), i % 3 == 2 ? concrete : crowdEnd, false);
-            }
-            Box(parent, "EndWall", new Vector3(s * (startX + tiersEnd * step + 0.5f), rise * tiersEnd + 3f, 0), new Vector3(1f, 6f, lengthZ), concrete, false);
-        }
-    }
+        var conc = new RingMesh();
+        conc.Strip(upperTop, backTop, 10f, 1f);
+        conc.Strip(lowerTop + new Vector2(0f, 1.1f), balconyTop, 10f, 1f);
+        conc.Strip(balconyTop, new Vector2(17.4f, 15.4f), 10f, 1f);
+        conc.Create(parent, "Concrete", concrete);
 
-    static void BuildFloodlights(Transform root)
-    {
-        var parent = new GameObject("Floodlights").transform;
-        parent.SetParent(root);
-        var pole = MatLib.Lit(new Color(0.55f, 0.57f, 0.6f), 0.4f);
-        var lamp = MatLib.Lit(new Color(1f, 1f, 0.92f), 0.9f);
-        float x = Pitch.HalfL + 22f, z = Pitch.HalfW + 24f;
+        var led = new RingMesh();
+        led.Strip(lowerTop, lowerTop + new Vector2(0f, 1.1f), 10f, 1f);
+        led.Create(parent, "LedRibbon", ribbon);
+
+        var roof = new RingMesh();
+        roof.Strip(roofBack, roofFront, 10f, 1f);
+        roof.Create(parent, "Roof", roofMat);
+
+        var edge = new RingMesh();
+        edge.Strip(roofFront, roofFront + new Vector2(0f, 1.3f), 10f, 1f);
+        edge.Create(parent, "RoofEdge", roofEdge);
+
+        // Floodlight bars hanging under the roof edge
+        var lampMesh = new RingMesh();
+        lampMesh.Strip(roofFront + new Vector2(1.2f, -0.6f), roofFront + new Vector2(1.2f, 0.1f), 10f, 1f);
+        lampMesh.Create(parent, "RoofLights", lamps);
+
+        // Giant screens behind each goal
         foreach (float sx in new[] { -1f, 1f })
-            foreach (float sz in new[] { -1f, 1f })
-            {
-                Box(parent, "Pole", new Vector3(sx * x, 18f, sz * z), new Vector3(1.2f, 36f, 1.2f), pole, false);
-                var head = Box(parent, "Lamps", new Vector3(sx * (x - 1.5f), 36f, sz * (z - 1.5f)), new Vector3(6f, 3.5f, 0.6f), lamp, false);
-                head.transform.rotation = Quaternion.LookRotation(new Vector3(-sx, -0.6f, -sz)) * Quaternion.Euler(0, 0, 0);
-            }
+        {
+            Vector3 pos = new Vector3(sx * (RingA + 19f), 19f, 0f);
+            var frame = Box(parent, "ScreenFrame", pos, new Vector3(0.6f, 6.5f, 19f), darkWall, false);
+            var canvasGo = new GameObject("ScreenText", typeof(RectTransform), typeof(Canvas));
+            canvasGo.transform.SetParent(parent);
+            canvasGo.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+            var rt = (RectTransform)canvasGo.transform;
+            rt.sizeDelta = new Vector2(1800f, 600f);
+            rt.position = pos - new Vector3(sx * 0.35f, 0f, 0f);
+            rt.rotation = Quaternion.LookRotation(new Vector3(sx, 0f, 0f));
+            rt.localScale = Vector3.one * 0.01f;
+            var bg = UIKit.Img(rt, "Bg", null, new Color(0.03f, 0.1f, 0.3f, 1f));
+            UIKit.Stretch(bg.rectTransform);
+            var t1 = UIKit.Txt(rt, "ACADEMY GROUND", 150, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0f, 110f), new Vector2(1700f, 220f));
+            t1.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            var t2 = UIKit.Txt(rt, "ULTIMATE KICKOFF", 110, new Color(1f, 0.85f, 0.3f), new Vector2(0.5f, 0.5f), new Vector2(0f, -130f), new Vector2(1700f, 180f));
+            t2.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        }
     }
+
+    static void BuildFloodlights(Transform root) { }
 
     static void BuildCornerFlags(Transform root)
     {

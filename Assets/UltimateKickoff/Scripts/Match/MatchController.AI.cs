@@ -98,6 +98,18 @@ public partial class MatchController
 
         previewMate = null;
         charging = false;
+        var heldBy = ball.Holder;
+        if (heldBy != null && heldBy.team == 0)
+        {
+            // Our goalkeeper has the ball in his hands: PASS = throw, SHOOT = long kick (auto after 6 s)
+            if (passDown || throughDown)
+            {
+                MatchPlayer mate = dir.sqrMagnitude > 0.09f ? BestMateInDirection(heldBy, dir.normalized, 50f) : null;
+                KeeperDistribute(heldBy, mate, false);
+            }
+            else if (shootDown) KeeperDistribute(heldBy, null, true);
+            return;
+        }
         if (attacking && ball.IsFree)
         {
             // First-time pass / shot: queued until the ball arrives
@@ -815,7 +827,8 @@ public partial class MatchController
         if (ball.Holder == gk)
         {
             gk.Step(Vector3.zero, dt, goal + Vector3.right * inward * 50f, true);
-            if (Time.time >= gk.gkHoldUntil) KeeperDistribute(gk);
+            // 6-second rule: the AI releases quickly, the user's keeper waits for a button but never longer than 6 s
+            if (Time.time >= gk.gkHoldUntil || Time.time - gk.gkHoldStart >= 6f) KeeperDistribute(gk, null, false);
             return;
         }
 
@@ -858,7 +871,8 @@ public partial class MatchController
         bool inBox = Pitch.InBox(gk.team, bp);
         var carrier = ball.Owner;
 
-        if (ball.IsFree && inBox && ball.Speed < 10f && bp.y < 2.3f && KeeperFirst(gk))
+        bool ownRelease = ball.LastKicker == gk && Time.time < gk.gkNoCatchUntil;
+        if (ball.IsFree && !ownRelease && inBox && ball.Speed < 10f && bp.y < 2.3f && KeeperFirst(gk))
         {
             target = new Vector3(bp.x, 0f, bp.z);
             sprint = true;
@@ -982,21 +996,32 @@ public partial class MatchController
         bool wasShot = ball.IsShot;
         ball.Hold(gk);
         possessionTeam = gk.team;
-        gk.gkHoldUntil = Time.time + Random.Range(1.2f, 2f);
+        gk.gkHoldStart = Time.time;
+        gk.gkHoldUntil = Time.time + (gk.team == 0 ? 6f : Random.Range(1.5f, 3f));
         if (wasShot) hud.Toast("SAVE!");
     }
 
-    void KeeperDistribute(MatchPlayer gk)
+    /// <param name="forced">Team-mate chosen by the user (null = pick automatically).</param>
+    /// <param name="longKick">Punt it up the pitch instead of a short throw.</param>
+    void KeeperDistribute(MatchPlayer gk, MatchPlayer forced, bool longKick)
     {
-        var target = PickRestartTarget(gk, 45f, Random.value < 0.4f);
-        if (target == null) target = ClosestTo(gk.team, gk.Pos + AttackDir(gk.team) * 20f, null);
-        if (target == null) return;
+        if (ball.Holder != gk) return;
+        gk.gkNoCatchUntil = Time.time + 2.5f;
+        var target = forced;
+        if (target == null) target = PickRestartTarget(gk, longKick ? 65f : 45f, longKick || Random.value < 0.4f);
+        if (target == null) target = ClosestTo(gk.team, gk.Pos + AttackDir(gk.team) * (longKick ? 45f : 20f), gk);
+        if (target == null)
+        {
+            // Nobody to aim at: just clear it up the pitch so play always continues
+            KickToPoint(gk, ClampInPitch(gk.Pos + AttackDir(gk.team) * 40f, 3f), true, 4f, Ball.R, null);
+            return;
+        }
         Vector3 aim = target.Pos + target.velocity * 0.6f;
         float d = Flat(ball.Pos, aim);
-        bool throwIt = d < 30f;
+        bool throwIt = d < 30f && !longKick;
         if (throwIt) gk.rig.PlayThrow();
         target.expectBallUntil = Time.time + 3f;
-        KickToPoint(gk, aim, d > 14f, 4f, Ball.R, target, !throwIt);
+        KickToPoint(gk, aim, d > 14f || longKick, 4f, Ball.R, target, !throwIt);
         if (target.team == 0) SetControlled(target);
     }
 }

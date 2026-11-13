@@ -255,10 +255,14 @@ public class MyTeamScreen : MonoBehaviour
         UIKit.Txt(badgeImg.transform, rating.ToString(), 46, rating < p.ovr ? new Color(0.8f, 0.15f, 0.1f) : ink, new Vector2(0.5f, 1f), new Vector2(0f, -6f), new Vector2(96f, 56f));
         UIKit.Txt(badgeImg.transform, p.pos.ToString(), 24, ink, new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(96f, 30f));
 
-        UIKit.Txt(row.transform, p.name, 36, Color.white, new Vector2(0f, 0.5f), new Vector2(132f, 18f), new Vector2(520f, 50f), TextAnchor.MiddleLeft);
+        var faceBg = UIKit.Img(row.transform, "FaceBg", UIKit.RoundedSmall, new Color(1f, 1f, 1f, 0.08f), new Vector2(0f, 0.5f), new Vector2(124f, 0f), new Vector2(100f, 100f));
+        var face = UIKit.Img(faceBg.transform, "Face", Portrait.Get(p), Color.white);
+        UIKit.Stretch(face.rectTransform, 2, 2, 0, 4);
+        face.preserveAspect = true;
+        UIKit.Txt(row.transform, p.name, 36, Color.white, new Vector2(0f, 0.5f), new Vector2(240f, 18f), new Vector2(520f, 50f), TextAnchor.MiddleLeft);
         string club = p.legend ? "ICON" : string.IsNullOrEmpty(p.club) ? "FREE AGENT" : p.club;
         string sub = p.nation + "  •  " + club + (inSlot >= 0 ? "  •  IN XI (" + f.slots[inSlot].pos + ")" : "");
-        UIKit.Txt(row.transform, sub, 24, inSlot >= 0 ? UIKit.Accent : UIKit.TextDim, new Vector2(0f, 0.5f), new Vector2(132f, -26f), new Vector2(560f, 36f), TextAnchor.MiddleLeft, FontStyle.Normal);
+        UIKit.Txt(row.transform, sub, 24, inSlot >= 0 ? UIKit.Accent : UIKit.TextDim, new Vector2(0f, 0.5f), new Vector2(240f, -26f), new Vector2(560f, 36f), TextAnchor.MiddleLeft, FontStyle.Normal);
 
         string[] labels = p.StatLabels;
         int[] stats = p.Stats;

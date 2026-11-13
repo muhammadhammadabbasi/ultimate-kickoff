@@ -16,6 +16,15 @@ public class HumanoidRig : MonoBehaviour
     {
         new Color(0.08f, 0.06f, 0.05f), new Color(0.25f, 0.16f, 0.08f), new Color(0.55f, 0.4f, 0.22f), new Color(0.85f, 0.75f, 0.5f)
     };
+    /// <summary>Hair colour for a player hash (darker skin tones get dark hair).</summary>
+    public static Color HairFor(int h)
+    {
+        int skin = h % SkinTones.Length;
+        int idx = (h / 7) % HairColors.Length;
+        if (skin >= 2) idx %= 2;
+        return HairColors[idx];
+    }
+
     public static readonly Color[] BootColors =
     {
         new Color(0.08f, 0.08f, 0.1f), Color.white, new Color(0.95f, 0.4f, 0.1f), new Color(0.1f, 0.7f, 0.95f), new Color(0.95f, 0.85f, 0.2f)

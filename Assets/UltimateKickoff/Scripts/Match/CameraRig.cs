@@ -6,8 +6,20 @@ public class CameraRig : MonoBehaviour
     public enum Mode { Menu, Broadcast }
 
     public Mode mode = Mode.Menu;
-    public float height = 12.6f;
-    public float back = 17.5f;
+    public float height = 21f;
+    public float back = 29f;
+
+    static readonly float[] Heights = { 13f, 21f, 31f };
+    static readonly float[] Backs = { 18f, 29f, 42f };
+
+    /// <summary>Reads the NEAR / MEDIUM / FAR camera setting.</summary>
+    public void ApplyZoom()
+    {
+        int i = Mathf.Clamp(Squad.cameraIndex, 0, Heights.Length - 1);
+        height = Heights[i];
+        back = Backs[i];
+        QualitySettings.shadowDistance = 60f + back * 1.6f;
+    }
 
     Camera cam;
     Transform target;
@@ -40,7 +52,8 @@ public class CameraRig : MonoBehaviour
         Ensure();
         mode = Mode.Broadcast;
         target = follow;
-        cam.fieldOfView = 40f;
+        cam.fieldOfView = 38f;
+        ApplyZoom();
         focus = follow != null ? Flatten(follow.position) : Vector3.zero;
         focusVel = Vector3.zero;
         Apply();
@@ -54,7 +67,7 @@ public class CameraRig : MonoBehaviour
         {
             orbit += Time.unscaledDeltaTime * 3f;
             float a = orbit * Mathf.Deg2Rad;
-            Vector3 pos = new Vector3(Mathf.Sin(a) * 62f, 22f, -Mathf.Cos(a) * 62f);
+            Vector3 pos = new Vector3(Mathf.Sin(a) * 56f, 19f, -Mathf.Cos(a) * 38f);
             transform.position = pos;
             transform.LookAt(new Vector3(0f, 2f, 0f));
             return;
@@ -70,7 +83,7 @@ public class CameraRig : MonoBehaviour
             if (m.ball.IsFree) desired += Flatten(m.ball.Velocity) * 0.25f;
         }
         desired.x = Mathf.Clamp(desired.x, -Pitch.HalfL + 15f, Pitch.HalfL - 15f);
-        desired.z = Mathf.Clamp(desired.z * 0.72f, -Pitch.HalfW + 8f, Pitch.HalfW - 12f);
+        desired.z = Mathf.Clamp(desired.z * 0.6f, -Pitch.HalfW + 10f, Pitch.HalfW - 16f);
         focus = Vector3.SmoothDamp(focus, desired, ref focusVel, 0.38f, 60f, Time.unscaledDeltaTime);
         Apply();
     }

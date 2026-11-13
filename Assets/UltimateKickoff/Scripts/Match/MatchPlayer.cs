@@ -44,6 +44,8 @@ public class MatchPlayer : MonoBehaviour
     public float gkSaveAt;
     public Vector3 gkDiveTarget;
     public float gkHoldUntil;
+    public float gkHoldStart;
+    public float gkNoCatchUntil;
     public float gkSmotherCooldown;
 
     public bool Stunned => Time.time < stunUntil;
@@ -86,11 +88,11 @@ public class MatchPlayer : MonoBehaviour
 
         int h = d.Hash;
         var skin = MatLib.Lit(HumanoidRig.SkinTones[h % HumanoidRig.SkinTones.Length], 0.25f);
-        var hair = MatLib.Lit(HumanoidRig.HairColors[(h / 7) % HumanoidRig.HairColors.Length], 0.2f);
-        float scale = 0.95f + ((h / 13) % 10) * 0.011f;
+        var hair = MatLib.Lit(HumanoidRig.HairFor(h), 0.2f);
+        float scale = (0.95f + ((h / 13) % 10) * 0.011f) * 1.12f;   // drawn a little larger than life so players read well from the wide camera
 
         Color skinCol = HumanoidRig.SkinTones[h % HumanoidRig.SkinTones.Length];
-        Color hairCol = HumanoidRig.HairColors[(h / 7) % HumanoidRig.HairColors.Length];
+        Color hairCol = HumanoidRig.HairFor(h);
         Color trim = BodyMesh.Contrast(shirt.color, shorts.color);
         var torsoMat = BodyMesh.ShirtMaterial(shirt.color, trim, number, isGK);
         var headMat = BodyMesh.HeadMaterial(skinCol, hairCol, (h / 5) % 3);

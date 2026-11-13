@@ -31,11 +31,10 @@ public static class CardView
         frame.pixelsPerUnitMultiplier = 3f;
         UIKit.Stretch(frame.rectTransform, w * 0.06f, w * 0.06f, h * 0.05f, h * 0.2f);
 
-        // Silhouette (head + shoulders)
-        Color sil = new Color(ink.r, ink.g, ink.b, 0.28f);
-        if (p.legend || p.ovr < 90) sil = new Color(0.2f, 0.15f, 0.05f, 0.25f);
-        UIKit.Img(bg.transform, "Shoulders", UIKit.Rounded, sil, new Vector2(0.5f, 0f), new Vector2(w * 0.08f, h * 0.2f), new Vector2(w * 0.62f, h * 0.24f));
-        UIKit.Img(bg.transform, "Head", UIKit.Circle, sil, new Vector2(0.5f, 0f), new Vector2(w * 0.08f, h * 0.42f), new Vector2(w * 0.34f, w * 0.34f));
+        // Portrait (head + shoulders, same look as the 3D player)
+        var glow = UIKit.Img(bg.transform, "Glow", UIKit.Glow, new Color(1f, 1f, 1f, 0.35f), new Vector2(0.5f, 0f), new Vector2(w * 0.12f, h * 0.2f), new Vector2(w * 0.8f, w * 0.8f));
+        var face = UIKit.Img(bg.transform, "Portrait", Portrait.Get(p), Color.white, new Vector2(0.5f, 0f), new Vector2(w * 0.13f, h * 0.2f), new Vector2(w * 0.72f, w * 0.72f));
+        face.preserveAspect = true;
 
         // Rating + position
         var ovrText = UIKit.Txt(bg.transform, rating.ToString(), Mathf.RoundToInt(h * 0.2f), outOfPos ? new Color(0.85f, 0.2f, 0.1f) : ink,

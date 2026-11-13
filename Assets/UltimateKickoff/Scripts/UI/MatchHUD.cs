@@ -130,10 +130,20 @@ public class MatchHUD : MonoBehaviour
     {
         pauseOverlay = UIKit.Img(root, "Pause", null, new Color(0f, 0f, 0f, 0.7f), true).gameObject;
         UIKit.Stretch((RectTransform)pauseOverlay.transform);
-        var panel = UIKit.Img(pauseOverlay.transform, "Panel", UIKit.Rounded, UIKit.Panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(620f, 520f));
+        var panel = UIKit.Img(pauseOverlay.transform, "Panel", UIKit.Rounded, UIKit.Panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(620f, 620f));
         panel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
         UIKit.Txt(panel.transform, "PAUSED", 64, Color.white, new Vector2(0.5f, 1f), new Vector2(0f, -40f), new Vector2(560f, 90f));
-        UIKit.Btn(panel.transform, "RESUME", UIKit.Green, new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(420f, 110f), () => ClosePause(), 40);
+        UIKit.Btn(panel.transform, "RESUME", UIKit.Green, new Vector2(0.5f, 0.5f), new Vector2(0f, 95f), new Vector2(420f, 105f), () => ClosePause(), 40);
+        Text camText = null;
+        var camBtn = UIKit.Btn(panel.transform, "CAMERA: " + Squad.CameraNames[Squad.cameraIndex], new Color(0.16f, 0.3f, 0.55f), new Vector2(0.5f, 0.5f), new Vector2(0f, -30f), new Vector2(420f, 95f), () =>
+        {
+            Squad.cameraIndex = (Squad.cameraIndex + 1) % Squad.CameraNames.Length;
+            Squad.Save();
+            if (camText != null) camText.text = "CAMERA: " + Squad.CameraNames[Squad.cameraIndex];
+            var rig = Camera.main != null ? Camera.main.GetComponent<CameraRig>() : null;
+            if (rig != null) rig.ApplyZoom();
+        }, 34);
+        camText = camBtn.GetComponentInChildren<Text>();
         UIKit.Btn(panel.transform, "QUIT MATCH", UIKit.Red, new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(420f, 100f), () =>
         {
             Time.timeScale = 1f;
@@ -209,6 +219,13 @@ public class MatchHUD : MonoBehaviour
             GameInput.SetLabel(GameAction.Pass, corner ? "SHORT" : throwIn ? "THROW" : "PASS");
             GameInput.SetLabel(GameAction.Through, "LOB");
             GameInput.SetLabel(GameAction.Shoot, corner ? "CROSS" : "LONG");
+        }
+        else if (m.ball.Holder != null && m.ball.Holder.team == 0)
+        {
+            int left = Mathf.Clamp(Mathf.CeilToInt(6f - (Time.time - m.ball.Holder.gkHoldStart)), 0, 6);
+            GameInput.SetLabel(GameAction.Pass, "THROW " + left);
+            GameInput.SetLabel(GameAction.Through, "THROW");
+            GameInput.SetLabel(GameAction.Shoot, "KICK");
         }
         else if (m.possessionTeam == 0)
         {

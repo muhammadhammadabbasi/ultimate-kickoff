@@ -38,6 +38,8 @@ public static class Squad
     public static int kitIndex;
     public static int difficulty = 1;
     public static int halfIndex = 1;
+    public static int cameraIndex = 1;
+    public static readonly string[] CameraNames = { "NEAR", "MEDIUM", "FAR" };
     public static int wins, draws, losses, goalsFor, goalsAgainst;
 
     static bool loaded;
@@ -50,6 +52,7 @@ public static class Squad
         kitIndex = Mathf.Clamp(PlayerPrefs.GetInt("uk_kit", 0), 0, KitColors.Length - 1);
         difficulty = Mathf.Clamp(PlayerPrefs.GetInt("uk_diff", 1), 0, 2);
         halfIndex = Mathf.Clamp(PlayerPrefs.GetInt("uk_half", 1), 0, HalfMinutesOptions.Length - 1);
+        cameraIndex = Mathf.Clamp(PlayerPrefs.GetInt("uk_cam", 1), 0, CameraNames.Length - 1);
         teamName = PlayerPrefs.GetString("uk_team", "M.H FC");
         abbr = PlayerPrefs.GetString("uk_abbr", "M.H");
         wins = PlayerPrefs.GetInt("uk_w", 0);
@@ -83,6 +86,7 @@ public static class Squad
         PlayerPrefs.SetInt("uk_kit", kitIndex);
         PlayerPrefs.SetInt("uk_diff", difficulty);
         PlayerPrefs.SetInt("uk_half", halfIndex);
+        PlayerPrefs.SetInt("uk_cam", cameraIndex);
         PlayerPrefs.SetString("uk_team", teamName);
         PlayerPrefs.SetString("uk_abbr", abbr);
         PlayerPrefs.SetInt("uk_w", wins);
